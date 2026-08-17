@@ -1,43 +1,90 @@
 import streamlit as st
-import pandas as pd
 
-st.set_page_config(page_title="Financial Planner | Nivaara Capital", layout="wide")
+st.set_page_config(page_title="Financial Planner | Nivaara Capital", page_icon="🎯", layout="wide")
 
-# --- CALCULATION ENGINE ---
+
+# ---------- DETERMINISTIC MATH (UNCHANGED) ----------
 def calculate_future_value(pv, rate, years):
-    """Calculates Future Value: FV = PV(1+r)^n"""
     return pv * (1 + rate) ** years
 
+
 def calculate_required_sip(fv, rate, years):
-    """Calculates Annuity / Systematic Investment Plan"""
     if rate == 0:
         return fv / (years * 12)
     monthly_rate = rate / 12
     months = years * 12
     return (fv * monthly_rate) / (((1 + monthly_rate) ** months) - 1)
 
-# --- DASHBOARD ---
-st.title("Goal-Based Financial Planner")
-st.markdown("Map your required cash flows against expected market returns and inflation.")
-st.markdown("---")
 
-col1, col2, col3, col4 = st.columns(4)
-goal_name = col1.text_input("Goal Name", value="Core Retirement Corpus")
-current_cost = col2.number_input("Present Value (₹)", value=1000000, step=100000)
-years = col3.number_input("Time Horizon (Years)", value=10.0, step=1.0)
+# ---------- HEADER ----------
+st.title("🎯 Financial Goal Planner")
+st.caption("Model any life goal into an inflation-adjusted target and a monthly deployment plan.")
+st.divider()
 
-inflation = col1.slider("Expected Inflation (%)", 0.0, 15.0, 6.0) / 100
-returns = col2.slider("Expected Portfolio Return (%)", 0.0, 20.0, 10.0) / 100
+# ---------- INPUTS (SIDEBAR) ----------
+with st.sidebar:
+    st.header("Goal Parameters")
 
-if st.button("Run Simulation"):
-    future_cost = calculate_future_value(current_cost, inflation, years)
-    required_sip = calculate_required_sip(future_cost, returns, years)
-    
-    col_res1, col_res2 = st.columns(2)
-    col_res1.success(f"**Inflation-Adjusted Target:** ₹ {future_cost:,.2f}")
-    col_res2.info(f"**Required Monthly Deployment:** ₹ {required_sip:,.2f}")
-    
-    months = int(years * 12)
-    sip_array = [required_sip * i for i in range(1, months + 1)]
-    chart_data = pd.DataFrame({"Cumulative Capital": sip_array})
-    st.area_chart(chart_data)
+    with st.expander("📌 Goal Details", expanded=True):
+        goal_name = st.text_input("Goal Name", value="Retirement Corpus")
+        current_cost = st.number_input(
+            "Current Cost (₹)", min_value=0.0, value=2_500_000.0, step=50_000.0, format="%.2f"
+        )
+        years = st.number_input("Years to Goal", min_value=1, value=15, step=1)
+
+    with st.expander("📈 Assumptions", expanded=True):
+        inflation_pct = st.slider("Expected Inflation (%)", 0.0, 15.0, 6.0, step=0.25)
+        return_pct = st.slider("Expected Annual Return (%)", 0.0, 25.0, 12.0, step=0.25)
+
+    calculate_clicked = st.button("Calculate Plan", type="primary", use_container_width=True)
+
+# ---------- CALCULATIONS (UNCHANGED LOGIC) ----------
+inflation_rate = inflation_pct / 100
+return_rate = return_pct / 100
+
+future_value = calculate_future_value(current_cost, inflation_rate, years)
+required_sip = calculate_required_sip(future_value, return_rate, years)
+
+# ---------- RESULTS DASHBOARD ----------
+st.subheader(f"Plan Summary — {goal_name}")
+
+metric_col1, metric_col2, metric_col3 = st.columns(3)
+
+with metric_col1:
+    st.metric("Current Cost", f"₹{current_cost:,.0f}")
+
+with metric_col2:
+    st.metric(
+        "Inflation-Adjusted Target",
+        f"₹{future_value:,.0f}",
+        delta=f"+₹{future_value - current_cost:,.0f} over {years} yrs"
+    )
+
+with metric_col3:
+    st.metric(
+        "Required Monthly Deployment",
+        f"₹{required_sip:,.0f}",
+        delta="per month, SIP"
+    )
+
+st.divider()
+
+# ---------- DETAIL BREAKDOWN ----------
+with st.expander("🔍 View Calculation Breakdown", expanded=False):
+    detail_col1, detail_col2 = st.columns(2)
+
+    with detail_col1:
+        st.markdown("**Future Value Assumptions**")
+        st.write(f"- Present Value: ₹{current_cost:,.2f}")
+        st.write(f"- Inflation Rate: {inflation_pct:.2f}%")
+        st.write(f"- Time Horizon: {years} years")
+        st.write(f"- **Future Value: ₹{future_value:,.2f}**")
+
+    with detail_col2:
+        st.markdown("**SIP Assumptions**")
+        st.write(f"- Target Corpus: ₹{future_value:,.2f}")
+        st.write(f"- Expected Annual Return: {return_pct:.2f}%")
+        st.write(f"- Investment Horizon: {years * 12} months")
+        st.write(f"- **Required Monthly SIP: ₹{required_sip:,.2f}**")
+
+st.caption("Projections are deterministic estimates based on the assumptions above and are not guarantees of future performance.")
