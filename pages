@@ -1,0 +1,8 @@
+nivaaracapital/
+│
+├── requirements.txt
+├── app.py
+│
+└── pages/
+    ├── 1_Financial_Planner.py
+    └── 2_Portfolio_Tracker.py
