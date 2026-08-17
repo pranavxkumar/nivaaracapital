@@ -1,4 +1,4 @@
-# nivarawealth
+# nivaaracapital
 Financial Planning Mechanism
 # AI Financial Planning Engine
 
