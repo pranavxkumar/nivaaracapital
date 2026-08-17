@@ -1,90 +1,141 @@
 import streamlit as st
+import pandas as pd
+import yfinance as yf
+import numpy as np
+import plotly.express as px
 
-st.set_page_config(page_title="Financial Planner | Nivaara Capital", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="Portfolio Tracker | Nivaara Capital", page_icon="📊", layout="wide")
 
+# =========================================================
+# DARK THEME CSS (matches app.py)
+# =========================================================
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #0b0e13; color: #e6e6e6; }
+    [data-testid="stSidebar"] { background-color: #10141b; }
+    .nv-navbar {
+        padding: 14px 28px;
+        background-color: #12161f;
+        border: 1px solid #1f2530;
+        border-radius: 14px;
+        margin-bottom: 20px;
+    }
+    .nv-navbar span { font-size: 1.3rem; font-weight: 700; color: #f5f5f5; }
+    .nv-navbar span.gold { color: #d4af37; }
+    [data-testid="stMetricValue"] { color: #f5f5f5; }
+    [data-testid="stMetricLabel"] { color: #9aa3af; }
+    hr { border-color: #1f2530; }
+    .js-plotly-plot { border-radius: 12px; overflow: hidden; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# ---------- DETERMINISTIC MATH (UNCHANGED) ----------
-def calculate_future_value(pv, rate, years):
-    return pv * (1 + rate) ** years
-
-
-def calculate_required_sip(fv, rate, years):
-    if rate == 0:
-        return fv / (years * 12)
-    monthly_rate = rate / 12
-    months = years * 12
-    return (fv * monthly_rate) / (((1 + monthly_rate) ** months) - 1)
-
+st.markdown(
+    "<div class='nv-navbar'><span>🏛️ NIVAARA</span> <span class='gold'>CAPITAL</span></div>",
+    unsafe_allow_html=True
+)
 
 # ---------- HEADER ----------
-st.title("🎯 Financial Goal Planner")
-st.caption("Model any life goal into an inflation-adjusted target and a monthly deployment plan.")
+st.title("📊 Portfolio Tracker")
+st.caption("Live market performance and institutional-style risk analytics.")
 st.divider()
 
-# ---------- INPUTS (SIDEBAR) ----------
-with st.sidebar:
-    st.header("Goal Parameters")
+# ---------- CONTROLS ----------
+with st.container(border=True):
+    control_col1, control_col2, control_col3 = st.columns([2, 1, 1])
 
-    with st.expander("📌 Goal Details", expanded=True):
-        goal_name = st.text_input("Goal Name", value="Retirement Corpus")
-        current_cost = st.number_input(
-            "Current Cost (₹)", min_value=0.0, value=2_500_000.0, step=50_000.0, format="%.2f"
+    with control_col1:
+        selected_tickers = st.multiselect(
+            "Select Tickers",
+            options=["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"],
+            default=["AAPL", "MSFT"]
         )
-        years = st.number_input("Years to Goal", min_value=1, value=15, step=1)
 
-    with st.expander("📈 Assumptions", expanded=True):
-        inflation_pct = st.slider("Expected Inflation (%)", 0.0, 15.0, 6.0, step=0.25)
-        return_pct = st.slider("Expected Annual Return (%)", 0.0, 25.0, 12.0, step=0.25)
+    with control_col2:
+        timeframe = st.selectbox(
+            "Timeframe",
+            options=["1mo", "3mo", "6mo", "1y", "2y", "5y"],
+            index=3
+        )
 
-    calculate_clicked = st.button("Calculate Plan", type="primary", use_container_width=True)
-
-# ---------- CALCULATIONS (UNCHANGED LOGIC) ----------
-inflation_rate = inflation_pct / 100
-return_rate = return_pct / 100
-
-future_value = calculate_future_value(current_cost, inflation_rate, years)
-required_sip = calculate_required_sip(future_value, return_rate, years)
-
-# ---------- RESULTS DASHBOARD ----------
-st.subheader(f"Plan Summary — {goal_name}")
-
-metric_col1, metric_col2, metric_col3 = st.columns(3)
-
-with metric_col1:
-    st.metric("Current Cost", f"₹{current_cost:,.0f}")
-
-with metric_col2:
-    st.metric(
-        "Inflation-Adjusted Target",
-        f"₹{future_value:,.0f}",
-        delta=f"+₹{future_value - current_cost:,.0f} over {years} yrs"
-    )
-
-with metric_col3:
-    st.metric(
-        "Required Monthly Deployment",
-        f"₹{required_sip:,.0f}",
-        delta="per month, SIP"
-    )
+    with control_col3:
+        st.write("")
+        st.write("")
+        run_analysis = st.button("Refresh Data", type="primary", use_container_width=True)
 
 st.divider()
 
-# ---------- DETAIL BREAKDOWN ----------
-with st.expander("🔍 View Calculation Breakdown", expanded=False):
-    detail_col1, detail_col2 = st.columns(2)
+# ---------- DATA FETCH (UNCHANGED LOGIC) ----------
+if not selected_tickers:
+    st.info("Select at least one ticker above to begin analysis.")
+    st.stop()
 
-    with detail_col1:
-        st.markdown("**Future Value Assumptions**")
-        st.write(f"- Present Value: ₹{current_cost:,.2f}")
-        st.write(f"- Inflation Rate: {inflation_pct:.2f}%")
-        st.write(f"- Time Horizon: {years} years")
-        st.write(f"- **Future Value: ₹{future_value:,.2f}**")
+with st.spinner("Fetching live market data..."):
+    data = yf.download(selected_tickers, period=timeframe)['Close']
+    if isinstance(data, pd.Series):
+        data = data.to_frame(name=selected_tickers[0])
 
-    with detail_col2:
-        st.markdown("**SIP Assumptions**")
-        st.write(f"- Target Corpus: ₹{future_value:,.2f}")
-        st.write(f"- Expected Annual Return: {return_pct:.2f}%")
-        st.write(f"- Investment Horizon: {years * 12} months")
-        st.write(f"- **Required Monthly SIP: ₹{required_sip:,.2f}**")
+if data.empty:
+    st.error("No data returned for the selected tickers/timeframe. Please adjust your selection.")
+    st.stop()
 
-st.caption("Projections are deterministic estimates based on the assumptions above and are not guarantees of future performance.")
+# ---------- CHART LOGIC (UNCHANGED) ----------
+normalized_data = (data / data.iloc[0]) * 100
+fig = px.line(
+    normalized_data,
+    x=normalized_data.index,
+    y=normalized_data.columns,
+    labels={"value": "Normalized Performance (Base = 100)", "index": "Date", "variable": "Ticker"},
+    title="Normalized Price Performance"
+)
+fig.update_layout(
+    template="plotly_dark",
+    paper_bgcolor="#12161f",
+    plot_bgcolor="#12161f",
+    legend_title_text="Ticker",
+    hovermode="x unified",
+    margin=dict(l=20, r=20, t=60, b=20),
+    height=480,
+)
+fig.update_traces(line=dict(width=2.2))
+
+st.subheader("Comparative Performance")
+st.plotly_chart(fig, use_container_width=True)
+
+st.divider()
+
+# ---------- RISK ANALYTICS LOGIC (UNCHANGED) ----------
+daily_returns = data.pct_change().dropna()
+volatility = daily_returns.std() * np.sqrt(252)
+cumulative_return = (data.iloc[-1] / data.iloc[0]) - 1
+
+st.subheader("Risk & Return Metrics")
+
+risk_df = pd.DataFrame({
+    "Cumulative Return": cumulative_return,
+    "Annualized Volatility": volatility
+})
+risk_df.index.name = "Ticker"
+
+# Quick-glance metric cards
+metric_cols = st.columns(len(risk_df))
+for col, (ticker, row) in zip(metric_cols, risk_df.iterrows()):
+    with col:
+        with st.container(border=True):
+            st.markdown(f"**{ticker}**")
+            st.metric("Cumulative Return", f"{row['Cumulative Return'] * 100:.2f}%")
+            st.metric("Ann. Volatility", f"{row['Annualized Volatility'] * 100:.2f}%")
+
+# Full polished dataframe (dark-friendly gradient)
+with st.expander("📋 View Full Risk Metrics Table", expanded=True):
+    styled_df = risk_df.style.format({
+        "Cumulative Return": "{:.2%}",
+        "Annualized Volatility": "{:.2%}"
+    }).background_gradient(subset=["Cumulative Return"], cmap="RdYlGn") \
+      .background_gradient(subset=["Annualized Volatility"], cmap="OrRd")
+
+    st.dataframe(styled_df, use_container_width=True)
+
+st.caption("Data sourced live via yFinance. Risk metrics are historical and do not predict future performance.")
