@@ -3,7 +3,7 @@ import streamlit as st
 st.set_page_config(page_title="Financial Planner | Nivaara Capital", page_icon="🎯", layout="wide")
 
 
-# ---------- DETERMINISTIC MATH (UNCHANGED) ----------
+# ---------- DETERMINISTIC MATH (UNCHANGED — DO NOT MODIFY) ----------
 def calculate_future_value(pv, rate, years):
     return pv * (1 + rate) ** years
 
@@ -15,6 +15,43 @@ def calculate_required_sip(fv, rate, years):
     months = years * 12
     return (fv * monthly_rate) / (((1 + monthly_rate) ** months) - 1)
 
+
+# =========================================================
+# DARK THEME CSS (matches app.py)
+# =========================================================
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #0b0e13; color: #e6e6e6; }
+    [data-testid="stSidebar"] { background-color: #10141b; }
+    .nv-navbar {
+        padding: 14px 28px;
+        background-color: #12161f;
+        border: 1px solid #1f2530;
+        border-radius: 14px;
+        margin-bottom: 20px;
+    }
+    .nv-navbar span { font-size: 1.3rem; font-weight: 700; color: #f5f5f5; }
+    .nv-navbar span.gold { color: #d4af37; }
+    .nv-card {
+        background-color: #12161f;
+        border: 1px solid #1f2530;
+        border-radius: 14px;
+        padding: 22px 26px;
+        margin-bottom: 10px;
+    }
+    [data-testid="stMetricValue"] { color: #f5f5f5; }
+    [data-testid="stMetricLabel"] { color: #9aa3af; }
+    hr { border-color: #1f2530; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    "<div class='nv-navbar'><span>🏛️ NIVAARA</span> <span class='gold'>CAPITAL</span></div>",
+    unsafe_allow_html=True
+)
 
 # ---------- HEADER ----------
 st.title("🎯 Financial Goal Planner")
@@ -35,8 +72,6 @@ with st.sidebar:
     with st.expander("📈 Assumptions", expanded=True):
         inflation_pct = st.slider("Expected Inflation (%)", 0.0, 15.0, 6.0, step=0.25)
         return_pct = st.slider("Expected Annual Return (%)", 0.0, 25.0, 12.0, step=0.25)
-
-    calculate_clicked = st.button("Calculate Plan", type="primary", use_container_width=True)
 
 # ---------- CALCULATIONS (UNCHANGED LOGIC) ----------
 inflation_rate = inflation_pct / 100
